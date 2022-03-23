@@ -3,12 +3,16 @@ package datasource
 import (
 	"context"
 	"net/url"
+	"strconv"
 
 	"github.com/k1LoW/tbls/drivers/mongodb"
 	"github.com/k1LoW/tbls/schema"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
+
+const defaultSampleSize = 10
 
 // AnalyzeMongodb analyze `mongodb://`
 func AnalyzeMongodb(urlstr string) (*schema.Schema, error) {
@@ -25,13 +29,21 @@ func AnalyzeMongodb(urlstr string) (*schema.Schema, error) {
 		return s, err
 	}
 
+	err = client.Ping(ctx, readpref.Primary())
+	if err != nil {
+		return s, err
+	}
+
 	defer func() {
 		if err = client.Disconnect(ctx); err != nil {
 			panic(err)
 		}
 	}()
-
-	driver, err := mongodb.New(ctx, client, values.Get("dbName"))
+	smapleSize, err := strconv.ParseInt(values.Get("sampleSize"), 10, 0)
+	if err != nil {
+		smapleSize = defaultSampleSize
+	}
+	driver, err := mongodb.New(ctx, client, values.Get("dbName"), smapleSize)
 	if err != nil {
 		return s, err
 	}
