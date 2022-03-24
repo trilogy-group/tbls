@@ -3,18 +3,19 @@ package oracle
 import (
 	"database/sql"
 	"fmt"
+
 	// "regexp"
 	// "strings"
 
 	// "github.com/aquasecurity/go-version/pkg/version"
 	"github.com/k1LoW/tbls/schema"
-	_ "github.com/sijms/go-ora"
 	"github.com/pkg/errors"
+	_ "github.com/sijms/go-ora"
 )
 
 // Oracle struct
 type Oracle struct {
-	db        *sql.DB
+	db *sql.DB
 }
 
 type relationLink struct {
@@ -26,7 +27,7 @@ type relationLink struct {
 
 func New(db *sql.DB) *Oracle {
 	return &Oracle{
-		db:     db,
+		db: db,
 	}
 }
 
@@ -60,79 +61,97 @@ func (p *Oracle) Analyze(s *schema.Schema) error {
 
 	tables := []*schema.Table{}
 	links := []relationLink{}
-	
+
 	for tableRows.Next() {
 		var (
 			tableName    string
 			tableType    string
-			tableSchema  string
+			tableOwner   string
 			tableComment sql.NullString
 		)
-		err := tableRows.Scan(&tableName, &tableType, &tableSchema, &tableComment)
+		err := tableRows.Scan(&tableName, &tableType, &tableOwner, &tableComment)
 		if err != nil {
 			return errors.WithStack(err)
 		}
 		table := &schema.Table{
-			Name:    tableName,
+			Name:    fullTableName(tableOwner, tableName),
 			Type:    tableType,
 			Comment: tableComment.String,
 		}
 
-		constraintRows, err := p.db.Query(queryForConstraints(), tableName)
+		constraints := []*schema.Constraint{}
+
+		relationsRows, err := p.db.Query(queryForRelations(), tableOwner, tableName)
 		if err != nil {
 			return errors.WithStack(err)
 		}
-		defer constraintRows.Close()
+		defer relationsRows.Close()
 
-		constraints := []*schema.Constraint{}
-		for constraintRows.Next() {
+		for relationsRows.Next() {
 			var (
-				constraintName                  string
-				constraintType                  string
-				constraintReferencedTable       sql.NullString
+				constraintName                 string
+				constraintType                 string
+				constraintReferencedTable      sql.NullString
 				constraintColumnName           sql.NullString
 				constraintReferencedColumnName sql.NullString
+				constraintReferencedTableOwner sql.NullString
 				//constraintComment               sql.NullString
 			)
-			err = constraintRows.Scan(&constraintName, &constraintType, &constraintColumnName, &constraintReferencedTable, &constraintReferencedColumnName)
+			err = relationsRows.Scan(&constraintName, &constraintType, &constraintColumnName,
+				&constraintReferencedTable, &constraintReferencedColumnName, &constraintReferencedTableOwner)
 			if err != nil {
 				return errors.WithStack(err)
 			}
-			rt := constraintReferencedTable.String
+			rt := fullTableName(constraintReferencedTableOwner.String, constraintReferencedTable.String)
 			constraint := &schema.Constraint{
 				Name:              constraintName,
-				Type:              constraintType,
+				Type:              constraintTypeFullName(constraintType),
 				Table:             &table.Name,
 				Columns:           []string{constraintColumnName.String},
 				ReferencedTable:   &rt,
 				ReferencedColumns: []string{constraintReferencedColumnName.String},
 				//Comment:           constraintComment.String,
 			}
-
-			links = append(links, relationLink{
-				table:         table.Name,
-				columns:       []string{constraintColumnName.String},
-				parentTable:   constraintReferencedTable.String,
-				parentColumns: []string{constraintReferencedColumnName.String},
-			})
+			if constraintType == "R" {
+				links = append(links, relationLink{
+					table:         table.Name,
+					columns:       []string{constraintColumnName.String},
+					parentTable:   rt,
+					parentColumns: []string{constraintReferencedColumnName.String},
+				})
+			}
+			constraints = append(constraints, constraint)
+		}
+		constrainsRows, err := p.db.Query(queryForConstraints(), tableOwner, tableName)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		defer constrainsRows.Close()
+		for constrainsRows.Next() {
+			var (
+				constraintName       string
+				constraintType       string
+				constraintColumnName sql.NullString
+				constraintDef        sql.NullString
+				constraintStatus     sql.NullString
+			)
+			err = constrainsRows.Scan(&constraintName, &constraintType, &constraintColumnName, &constraintDef, &constraintStatus)
+			if err != nil {
+				return errors.WithStack(err)
+			}
+			constraint := &schema.Constraint{
+				Name:    constraintName,
+				Type:    constraintTypeFullName(constraintType),
+				Table:   &table.Name,
+				Columns: []string{constraintColumnName.String},
+				Def:     constraintDef.String,
+				Comment: constraintStatus.String,
+			}
 			constraints = append(constraints, constraint)
 		}
 		table.Constraints = constraints
 
-// select col.column_id, 
-// 		col.owner as schema_name,
-// 		col.table_name, 
-// 		col.column_name, 
-// 		col.data_type, 
-// 		col.data_length, 
-// 		col.data_precision, 
-// 		col.data_scale, 
-// 		col.nullable
-// from sys.all_tab_columns col
-// inner join sys.all_tables t on col.owner = t.owner and col.table_name = t.table_name
-// where col.owner = 'OT' and col.table_name = $1::tableName
-
-		columnRows, err := p.db.Query(columnsQuery(), tableName)
+		columnRows, err := p.db.Query(columnsQuery(), tableOwner, tableName)
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -140,19 +159,21 @@ func (p *Oracle) Analyze(s *schema.Schema) error {
 		columns := []*schema.Column{}
 		for columnRows.Next() {
 			var (
-				columnName               string
-				isNullable               string
-				dataType                 string
-				columnComment            sql.NullString
+				columnName    string
+				isNullable    string
+				dataType      string
+				dataDefault   sql.NullString
+				columnComment sql.NullString
 			)
-			err = columnRows.Scan(&columnName, &isNullable, &dataType, &columnComment)
+			err = columnRows.Scan(&columnName, &isNullable, &dataType, &dataDefault, &columnComment)
 			if err != nil {
 				return errors.WithStack(err)
 			}
 			column := &schema.Column{
-				Name:     columnName,
-				Type:     dataType,
-				Comment:  columnComment.String,
+				Name:    columnName,
+				Type:    dataType,
+				Default: dataDefault,
+				Comment: columnComment.String,
 			}
 			switch isNullable {
 			case "N":
@@ -162,10 +183,40 @@ func (p *Oracle) Analyze(s *schema.Schema) error {
 			default:
 				return errors.Errorf("unsupported col.nullable value '%s'", isNullable)
 			}
-		
+
 			columns = append(columns, column)
 		}
 		table.Columns = columns
+
+		indexRows, err := p.db.Query(queryForIndexes(), tableOwner, tableName)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		defer indexRows.Close()
+
+		indexes := []*schema.Index{}
+		for indexRows.Next() {
+			var (
+				indexName       string
+				indexDef        string
+				indexColumnName sql.NullString
+				indexComment    sql.NullString
+			)
+			err = indexRows.Scan(&indexName, &indexColumnName, &indexComment)
+			if err != nil {
+				return errors.WithStack(err)
+			}
+			index := &schema.Index{
+				Name:    indexName,
+				Def:     indexDef,
+				Table:   &table.Name,
+				Columns: []string{indexColumnName.String},
+				Comment: indexComment.String,
+			}
+
+			indexes = append(indexes, index)
+		}
+		table.Indexes = indexes
 
 		tables = append(tables, table)
 	}
@@ -207,6 +258,21 @@ func (p *Oracle) Analyze(s *schema.Schema) error {
 	return nil
 }
 
+func constraintTypeFullName(constraintType string) string {
+	switch constraintType {
+	case "R":
+		return "Referential integrity"
+	case "C":
+		return "Check constraint on a table"
+	default:
+		return constraintType
+	}
+}
+
+func fullTableName(owner string, tableName string) string {
+	return fmt.Sprintf("%s.%s", owner, tableName)
+}
+
 func (p *Oracle) Info() (*schema.Driver, error) {
 	var v string
 	row := p.db.QueryRow(`SELECT BANNER FROM v$version`)
@@ -225,15 +291,13 @@ func (p *Oracle) Info() (*schema.Driver, error) {
 	return d, nil
 }
 
-func filteredOwners() string {
-	return `not in ('ANONYMOUS','CTXSYS','DBSNMP','EXFSYS', 'LBACSYS',
+var filteredOwners = `not in ('ANONYMOUS','CTXSYS','DBSNMP','EXFSYS', 'LBACSYS',
 'MDSYS', 'MGMT_VIEW','OLAPSYS','OWBSYS','ORDPLUGINS', 'ORDSYS','OUTLN',
 'SI_INFORMTN_SCHEMA','SYS','SYSMAN','SYSTEM', 'TSMSYS','WK_TEST',
 'WKPROXY','WMSYS','XDB','APEX_040000', 'APEX_PUBLIC_USER','DIP',
 'FLOWS_30000','FLOWS_FILES','MDDATA', 'ORACLE_OCM', 'XS$NULL', 'WKSYS',
 'SPATIAL_CSW_ADMIN_USR', 'SPATIAL_WFS_ADMIN_USR', 'PUBLIC', 'DVSYS', 'ORDDATA',
 'DBSFWUSER', 'OJVMSYS', 'AUDSYS')`
-}
 
 func tablesQuery() string {
 	return fmt.Sprintf(`SELECT
@@ -241,25 +305,47 @@ func tablesQuery() string {
 FROM
   all_tables ata
 JOIN all_tab_comments atc ON atc.OWNER = ata.OWNER AND ata.TABLE_NAME = atc.TABLE_NAME 
-WHERE ata.OWNER %s`, filteredOwners())
+WHERE ata.OWNER %s`, filteredOwners)
 }
 
 func columnsQuery() string {
-	return fmt.Sprintf(`select col.column_name, 
+	return `select col.column_name, 
 			col.nullable,
 			col.data_type, 
+			col.DATA_DEFAULT,
 			atc.COMMENTS
 	from sys.all_tab_columns col
 	inner join sys.all_tables t on col.owner = t.owner and col.table_name = t.table_name
 	INNER JOIN all_tab_comments atc ON atc.OWNER = col.OWNER AND col.TABLE_NAME = atc.TABLE_NAME 
-	where col.owner %s and col.table_name = :tableName`, filteredOwners())
+	where col.owner = :tableOwner and col.table_name = :tableName`
+}
+
+func queryForRelations() string {
+	return `SELECT distinct c.CONSTRAINT_NAME, c.CONSTRAINT_TYPE, a.column_name child_column, 
+	b.table_name parent_table, b.column_name parent_column, b.OWNER as parent_table_owner
+FROM all_constraints c
+JOIN all_cons_columns a ON a.owner = c.owner AND a.constraint_name = c.constraint_name
+join all_cons_columns b on c.owner = b.owner and c.r_constraint_name = b.constraint_name
+WHERE c.CONSTRAINT_TYPE = 'R' and a.owner = :tableOwner and a.table_name = :tableName`
 }
 
 func queryForConstraints() string {
-	return fmt.Sprintf(`SELECT c.CONSTRAINT_NAME, c.CONSTRAINT_TYPE , a.column_name child_column, 
-	b.table_name parent_table, b.column_name parent_column
-FROM all_cons_columns a
-JOIN all_constraints c ON a.owner = c.owner AND a.constraint_name = c.constraint_name
-join all_cons_columns b on c.owner = b.owner and c.r_constraint_name = b.constraint_name
-WHERE c.constraint_type = 'R' and a.table_name = :tableName and a.owner %s`, filteredOwners())
+	return `select ctr.constraint_name, 
+	ctr.CONSTRAINT_TYPE,
+	col.column_name,
+	ctr.SEARCH_CONDITION as constraint,
+	ctr.status
+from sys.all_constraints ctr
+join sys.all_cons_columns col on ctr.owner = col.owner and ctr.constraint_name = col.constraint_name and ctr.table_name = col.table_name
+WHERE ctr.CONSTRAINT_TYPE = 'C' and ctr.owner = :tableOwner and ctr.table_name = :tableName`
+}
+
+func queryForIndexes() string {
+	return `select ind.index_name,
+	ind_col.column_name,
+	ind.index_type
+from sys.all_indexes ind
+inner join sys.all_ind_columns ind_col on ind.owner = ind_col.index_owner
+	and ind.index_name = ind_col.index_name
+WHERE ind.table_owner = :tableOwner and ind.table_name = :tableName`
 }
