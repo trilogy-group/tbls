@@ -5,6 +5,7 @@ import (
 	"embed"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -730,4 +731,8 @@ func (m *Md) addNumberToTable(data [][]string) [][]string {
 	}
 
 	return data
+}
+
+func normalizeName(name string) string {
+	return url.PathEscape(name)
 }
