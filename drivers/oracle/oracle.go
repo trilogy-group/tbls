@@ -260,7 +260,69 @@ func (p *Oracle) Analyze(s *schema.Schema) error {
 	}
 	s.Relations = relations
 
+	subroutines, err := p.getSubroutines()
+	if err != nil {
+		return err
+	}
+	s.Subroutines = subroutines
+
 	return nil
+}
+
+func (p *Oracle) getSubroutines() ([]*schema.Subroutine, error) {
+	subroutines := []*schema.Subroutine{}
+	userDefinedFunctions, err := p.db.Query(queryUserDefinedFunctions())
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	defer userDefinedFunctions.Close()
+
+	for userDefinedFunctions.Next() {
+		var (
+			owner      string
+			name       string
+			returnType string
+			arguments  string
+		)
+		err := userDefinedFunctions.Scan(&owner, &name, &returnType, &arguments)
+		if err != nil {
+			return subroutines, errors.WithStack(err)
+		}
+		subroutine := &schema.Subroutine{
+			Name:       fullTableName(owner, name),
+			Type:       "USER DEFINED FUNCTION",
+			ReturnType: returnType,
+			Arguments:  arguments,
+		}
+
+		subroutines = append(subroutines, subroutine)
+	}
+
+	soredProcedures, err := p.db.Query(queryStoredProcedures())
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	defer soredProcedures.Close()
+
+	for soredProcedures.Next() {
+		var (
+			owner     string
+			name      string
+			arguments string
+		)
+		err := soredProcedures.Scan(&owner, &name, &arguments)
+		if err != nil {
+			return subroutines, errors.WithStack(err)
+		}
+		subroutine := &schema.Subroutine{
+			Name:      fullTableName(owner, name),
+			Type:      "STORED PROCEDURE",
+			Arguments: arguments,
+		}
+
+		subroutines = append(subroutines, subroutine)
+	}
+	return subroutines, nil
 }
 
 func (p *Oracle) getViews(query string) ([]*schema.Table, error) {
@@ -473,3 +535,34 @@ var queryForTriggers = `select trig.trigger_name,
 	trig.trigger_body as script 
 from sys.all_triggers trig
 WHERE trig.table_owner = :tableOwner and trig.table_name = :tableName`
+
+func queryUserDefinedFunctions() string {
+	return fmt.Sprintf(`select obj.owner, obj.object_name as function_name,
+ret.data_type as return_type,
+LISTAGG(args.in_out || ' ' || args.data_type, '; ')
+			 WITHIN GROUP (ORDER BY position) as arguments
+from sys.all_objects obj
+join sys.all_arguments args on args.object_id = obj.object_id
+join (
+select object_id,
+			object_name,
+			data_type
+from sys.all_arguments
+where position = 0
+) ret on ret.object_id = args.object_id
+and ret.object_name = args.object_name
+where obj.object_type = 'FUNCTION' and args.position > 0 and obj.owner %s
+group by obj.owner, obj.object_name, ret.data_type`, filteredOwners)
+}
+
+func queryStoredProcedures() string {
+	return fmt.Sprintf(`select proc.owner, proc.object_name as procedure_name,
+	LISTAGG(args.argument_name || ' ' || args.in_out  || 
+					 ' ' || args.data_type, '; ')
+				 WITHIN GROUP (ORDER BY position) as arguments
+from sys.all_procedures proc
+left join sys.all_arguments args
+on proc.object_id = args.object_id
+where object_type = 'PROCEDURE' and proc.owner %s
+group by proc.owner, proc.object_name`, filteredOwners)
+}
