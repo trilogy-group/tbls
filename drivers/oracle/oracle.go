@@ -52,7 +52,7 @@ func (p *Oracle) Analyze(s *schema.Schema) error {
 		}
 	}
 
-	tableRows, err := p.db.Query(tablesQuery())
+	tableRows, err := p.db.Query(tablesQuery)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -214,13 +214,13 @@ func (p *Oracle) Analyze(s *schema.Schema) error {
 		tables = append(tables, table)
 	}
 
-	views, err := p.getViews(viewsQuery())
+	views, err := p.getViews(viewsQuery)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	tables = append(tables, views...)
 
-	materializedViews, err := p.getViews(materializedViewsQuery())
+	materializedViews, err := p.getViews(materializedViewsQuery)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -271,7 +271,7 @@ func (p *Oracle) Analyze(s *schema.Schema) error {
 
 func (p *Oracle) getSubroutines() ([]*schema.Subroutine, error) {
 	subroutines := []*schema.Subroutine{}
-	userDefinedFunctions, err := p.db.Query(queryUserDefinedFunctions())
+	userDefinedFunctions, err := p.db.Query(queryUserDefinedFunctions)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -298,7 +298,7 @@ func (p *Oracle) getSubroutines() ([]*schema.Subroutine, error) {
 		subroutines = append(subroutines, subroutine)
 	}
 
-	soredProcedures, err := p.db.Query(queryStoredProcedures())
+	soredProcedures, err := p.db.Query(queryStoredProcedures)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -437,22 +437,18 @@ func (p *Oracle) Info() (*schema.Driver, error) {
 
 // queries came from https://dataedo.com/kb/query/oracle
 
-var filteredOwners = `not in ('ANONYMOUS','CTXSYS','DBSNMP','EXFSYS', 'LBACSYS',
+var tablesQuery = `SELECT
+  ata.TABLE_NAME, atc.TABLE_TYPE, ata.OWNER, atc.COMMENTS 
+FROM
+  all_tables ata
+JOIN all_tab_comments atc ON atc.OWNER = ata.OWNER AND ata.TABLE_NAME = atc.TABLE_NAME 
+WHERE ata.OWNER not in ('ANONYMOUS','CTXSYS','DBSNMP','EXFSYS', 'LBACSYS',
 'MDSYS', 'MGMT_VIEW','OLAPSYS','OWBSYS','ORDPLUGINS', 'ORDSYS','OUTLN',
 'SI_INFORMTN_SCHEMA','SYS','SYSMAN','SYSTEM', 'TSMSYS','WK_TEST',
 'WKPROXY','WMSYS','XDB','APEX_040000', 'APEX_PUBLIC_USER','DIP',
 'FLOWS_30000','FLOWS_FILES','MDDATA', 'ORACLE_OCM', 'XS$NULL', 'WKSYS',
 'SPATIAL_CSW_ADMIN_USR', 'SPATIAL_WFS_ADMIN_USR', 'PUBLIC', 'DVSYS', 'ORDDATA',
 'DBSFWUSER', 'OJVMSYS', 'AUDSYS')`
-
-func tablesQuery() string {
-	return fmt.Sprintf(`SELECT
-  ata.TABLE_NAME, atc.TABLE_TYPE, ata.OWNER, atc.COMMENTS 
-FROM
-  all_tables ata
-JOIN all_tab_comments atc ON atc.OWNER = ata.OWNER AND ata.TABLE_NAME = atc.TABLE_NAME 
-WHERE ata.OWNER %s`, filteredOwners)
-}
 
 var tableColumnsQuery = `select col.column_name, 
 			col.nullable,
@@ -464,14 +460,18 @@ var tableColumnsQuery = `select col.column_name,
 	INNER JOIN all_tab_comments atc ON atc.OWNER = col.OWNER AND col.TABLE_NAME = atc.TABLE_NAME 
 	where col.owner = :tableOwner and col.table_name = :tableName`
 
-func viewsQuery() string {
-	return fmt.Sprintf(`SELECT
+var viewsQuery = `SELECT
   av.view_name, atc.TABLE_TYPE, av.OWNER, atc.COMMENTS, av.text_vc AS description
 FROM
   all_views av
 JOIN all_tab_comments atc ON atc.OWNER = av.OWNER AND av.view_name = atc.TABLE_NAME 
-WHERE av.OWNER %s`, filteredOwners)
-}
+WHERE av.OWNER not in ('ANONYMOUS','CTXSYS','DBSNMP','EXFSYS', 'LBACSYS',
+'MDSYS', 'MGMT_VIEW','OLAPSYS','OWBSYS','ORDPLUGINS', 'ORDSYS','OUTLN',
+'SI_INFORMTN_SCHEMA','SYS','SYSMAN','SYSTEM', 'TSMSYS','WK_TEST',
+'WKPROXY','WMSYS','XDB','APEX_040000', 'APEX_PUBLIC_USER','DIP',
+'FLOWS_30000','FLOWS_FILES','MDDATA', 'ORACLE_OCM', 'XS$NULL', 'WKSYS',
+'SPATIAL_CSW_ADMIN_USR', 'SPATIAL_WFS_ADMIN_USR', 'PUBLIC', 'DVSYS', 'ORDDATA',
+'DBSFWUSER', 'OJVMSYS', 'AUDSYS')`
 
 var viewColumnsQuery = `select col.column_name, 
 			col.nullable,
@@ -483,14 +483,18 @@ var viewColumnsQuery = `select col.column_name,
 	INNER JOIN all_tab_comments atc ON atc.OWNER = col.OWNER AND col.TABLE_NAME = atc.TABLE_NAME 
 	where col.owner = :viewOwner and col.table_name = :viewName`
 
-func materializedViewsQuery() string {
-	return fmt.Sprintf(`SELECT
+var materializedViewsQuery = `SELECT
 	amv.mview_name, atc.TABLE_TYPE, amv.OWNER, atc.COMMENTS, query as definition
 FROM
 	all_mviews amv
 JOIN all_tab_comments atc ON atc.OWNER = amv.OWNER AND amv.mview_name = atc.TABLE_NAME 
-WHERE amv.OWNER %s`, filteredOwners)
-}
+WHERE amv.OWNER not in ('ANONYMOUS','CTXSYS','DBSNMP','EXFSYS', 'LBACSYS',
+'MDSYS', 'MGMT_VIEW','OLAPSYS','OWBSYS','ORDPLUGINS', 'ORDSYS','OUTLN',
+'SI_INFORMTN_SCHEMA','SYS','SYSMAN','SYSTEM', 'TSMSYS','WK_TEST',
+'WKPROXY','WMSYS','XDB','APEX_040000', 'APEX_PUBLIC_USER','DIP',
+'FLOWS_30000','FLOWS_FILES','MDDATA', 'ORACLE_OCM', 'XS$NULL', 'WKSYS',
+'SPATIAL_CSW_ADMIN_USR', 'SPATIAL_WFS_ADMIN_USR', 'PUBLIC', 'DVSYS', 'ORDDATA',
+'DBSFWUSER', 'OJVMSYS', 'AUDSYS')`
 
 var materializedViewColumnsQuery = `select col.column_name, 
 			col.nullable,
@@ -536,8 +540,7 @@ var queryForTriggers = `select trig.trigger_name,
 from sys.all_triggers trig
 WHERE trig.table_owner = :tableOwner and trig.table_name = :tableName`
 
-func queryUserDefinedFunctions() string {
-	return fmt.Sprintf(`select obj.owner, obj.object_name as function_name,
+var queryUserDefinedFunctions = `select obj.owner, obj.object_name as function_name,
 ret.data_type as return_type,
 LISTAGG(args.in_out || ' ' || args.data_type, '; ')
 			 WITHIN GROUP (ORDER BY position) as arguments
@@ -551,18 +554,27 @@ from sys.all_arguments
 where position = 0
 ) ret on ret.object_id = args.object_id
 and ret.object_name = args.object_name
-where obj.object_type = 'FUNCTION' and args.position > 0 and obj.owner %s
-group by obj.owner, obj.object_name, ret.data_type`, filteredOwners)
-}
+where obj.object_type = 'FUNCTION' and args.position > 0 and obj.owner not in ('ANONYMOUS','CTXSYS','DBSNMP','EXFSYS', 'LBACSYS',
+'MDSYS', 'MGMT_VIEW','OLAPSYS','OWBSYS','ORDPLUGINS', 'ORDSYS','OUTLN',
+'SI_INFORMTN_SCHEMA','SYS','SYSMAN','SYSTEM', 'TSMSYS','WK_TEST',
+'WKPROXY','WMSYS','XDB','APEX_040000', 'APEX_PUBLIC_USER','DIP',
+'FLOWS_30000','FLOWS_FILES','MDDATA', 'ORACLE_OCM', 'XS$NULL', 'WKSYS',
+'SPATIAL_CSW_ADMIN_USR', 'SPATIAL_WFS_ADMIN_USR', 'PUBLIC', 'DVSYS', 'ORDDATA',
+'DBSFWUSER', 'OJVMSYS', 'AUDSYS')
+group by obj.owner, obj.object_name, ret.data_type`
 
-func queryStoredProcedures() string {
-	return fmt.Sprintf(`select proc.owner, proc.object_name as procedure_name,
+var queryStoredProcedures = `select proc.owner, proc.object_name as procedure_name,
 	LISTAGG(args.argument_name || ' ' || args.in_out  || 
 					 ' ' || args.data_type, '; ')
 				 WITHIN GROUP (ORDER BY position) as arguments
 from sys.all_procedures proc
 left join sys.all_arguments args
 on proc.object_id = args.object_id
-where object_type = 'PROCEDURE' and proc.owner %s
-group by proc.owner, proc.object_name`, filteredOwners)
-}
+where object_type = 'PROCEDURE' and proc.owner not in ('ANONYMOUS','CTXSYS','DBSNMP','EXFSYS', 'LBACSYS',
+'MDSYS', 'MGMT_VIEW','OLAPSYS','OWBSYS','ORDPLUGINS', 'ORDSYS','OUTLN',
+'SI_INFORMTN_SCHEMA','SYS','SYSMAN','SYSTEM', 'TSMSYS','WK_TEST',
+'WKPROXY','WMSYS','XDB','APEX_040000', 'APEX_PUBLIC_USER','DIP',
+'FLOWS_30000','FLOWS_FILES','MDDATA', 'ORACLE_OCM', 'XS$NULL', 'WKSYS',
+'SPATIAL_CSW_ADMIN_USR', 'SPATIAL_WFS_ADMIN_USR', 'PUBLIC', 'DVSYS', 'ORDDATA',
+'DBSFWUSER', 'OJVMSYS', 'AUDSYS')
+group by proc.owner, proc.object_name`
