@@ -5,6 +5,7 @@ import (
 	"embed"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -478,16 +479,41 @@ func (m *Md) makeSchemaTemplateData(s *schema.Schema) map[string]interface{} {
 		tablesData = m.addNumberToTable(tablesData)
 	}
 
+	tablesSubroutineData := [][]string{}
+	tablesSubroutineHeader := []string{
+		m.config.MergedDict.Lookup("Name"),
+		m.config.MergedDict.Lookup("ReturnType"),
+		m.config.MergedDict.Lookup("Arguments"),
+		m.config.MergedDict.Lookup("Type"),
+	}
+	tablesSubroutineHeaderLine := []string{"----", "-------", "-------", "----"}
+	tablesSubroutineData = append(tablesSubroutineData,
+		tablesSubroutineHeader,
+		tablesSubroutineHeaderLine,
+	)
+
+	for _, t := range s.Subroutines {
+		data := []string{
+			t.Name,
+			t.ReturnType,
+			t.Arguments,
+			t.Type,
+		}
+		tablesSubroutineData = append(tablesSubroutineData, data)
+	}
+
 	if adjust {
 		return map[string]interface{}{
-			"Schema": s,
-			"Tables": adjustTable(tablesData),
+			"Schema":      s,
+			"Tables":      adjustTable(tablesData),
+			"Subroutines": adjustTable(tablesSubroutineData),
 		}
 	}
 
 	return map[string]interface{}{
-		"Schema": s,
-		"Tables": tablesData,
+		"Schema":      s,
+		"Tables":      tablesData,
+		"Subroutines": tablesSubroutineData,
 	}
 }
 
@@ -730,4 +756,8 @@ func (m *Md) addNumberToTable(data [][]string) [][]string {
 	}
 
 	return data
+}
+
+func normalizeName(name string) string {
+	return url.PathEscape(name)
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/k1LoW/tbls/config"
 	"github.com/k1LoW/tbls/drivers"
 	"github.com/k1LoW/tbls/drivers/mariadb"
+	"github.com/k1LoW/tbls/drivers/oracle"
 	"github.com/k1LoW/tbls/drivers/mssql"
 	"github.com/k1LoW/tbls/drivers/mysql"
 	"github.com/k1LoW/tbls/drivers/postgres"
@@ -91,6 +92,8 @@ func Analyze(dsn config.DSN) (*schema.Schema, error) {
 		} else {
 			driver = postgres.New(db)
 		}
+	case "oracle":
+		driver = oracle.New(db)
 	case "mysql":
 		s.Name = splitted[1]
 		if u.Scheme == "maria" || u.Scheme == "mariadb" {
