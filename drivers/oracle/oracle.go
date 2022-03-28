@@ -4,10 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 
-	// "regexp"
-	// "strings"
-
-	// "github.com/aquasecurity/go-version/pkg/version"
 	"github.com/k1LoW/tbls/schema"
 	"github.com/pkg/errors"
 	_ "github.com/sijms/go-ora"
@@ -530,11 +526,6 @@ inner join sys.all_ind_columns ind_col on ind.owner = ind_col.index_owner
 	and ind.index_name = ind_col.index_name
 WHERE ind.table_owner = :tableOwner and ind.table_name = :tableName`
 
-/*
-	trig.trigger_type,
-	trig.triggering_event,
-	trig.status,
-*/
 var queryForTriggers = `select trig.trigger_name,
 	trig.trigger_body as script 
 from sys.all_triggers trig
