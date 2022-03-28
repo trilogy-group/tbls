@@ -13,6 +13,8 @@ import (
 	"github.com/xo/dburl"
 )
 
+var disabled = true
+
 var s *schema.Schema
 var db *sql.DB
 
@@ -33,6 +35,9 @@ func TestMain(m *testing.M) {
 }
 
 func TestAnalyzeView(t *testing.T) {
+	if disabled {
+		t.Skip("Skipping as there is no running Oracle DB")
+	}
 	driver := New(db)
 	err := driver.Analyze(s)
 	if err != nil {
@@ -46,6 +51,9 @@ func TestAnalyzeView(t *testing.T) {
 }
 
 func TestInfo(t *testing.T) {
+	if disabled {
+		t.Skip("Skipping as there is no running Oracle DB")
+	}
 	driver := New(db)
 	d, err := driver.Info()
 	if err != nil {
