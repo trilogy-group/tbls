@@ -45,7 +45,9 @@ func (g *Gviz) OutputSchema(wr io.Writer, s *schema.Schema) error {
 		}
 		dot = buf.Bytes()
 	} else {
-		file, err := os.OpenFile("temp.dot", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+		const tempDotFileName = "temp.dot"
+		const unflattenDotFileName = "unflatten.dot"
+		file, err := os.OpenFile(tempDotFileName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -61,7 +63,7 @@ func (g *Gviz) OutputSchema(wr io.Writer, s *schema.Schema) error {
 
 		cmdUnflattenAttr := &exec.Cmd{
 			Path:   unflattenTool,
-			Args:   []string{unflattenTool, "-l", "50", "-c", "50", "-o", "unflatten.dot", "temp.dot"},
+			Args:   []string{unflattenTool, "-l", "50", "-c", "50", "-o", unflattenDotFileName, tempDotFileName},
 			Stdout: os.Stdout,
 			Stderr: os.Stderr,
 		}
@@ -70,7 +72,7 @@ func (g *Gviz) OutputSchema(wr io.Writer, s *schema.Schema) error {
 			return errors.WithStack(err)
 		}
 
-		updatedFile, err := os.Open("unflatten.dot")
+		updatedFile, err := os.Open(unflattenDotFileName)
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -93,11 +95,11 @@ func (g *Gviz) OutputSchema(wr io.Writer, s *schema.Schema) error {
 		if err != nil {
 			return errors.WithStack(err)
 		}
-		err = os.Remove("temp.dot")
+		err = os.Remove(tempDotFileName)
 		if err != nil {
 			return errors.WithStack(err)
 		}
-		err = os.Remove("unflatten.dot")
+		err = os.Remove(unflattenDotFileName)
 		if err != nil {
 			return errors.WithStack(err)
 		}
