@@ -47,7 +47,7 @@ func (g *Gviz) OutputSchema(wr io.Writer, s *schema.Schema) error {
 	} else {
 		const tempDotFileName = "temp.dot"
 		const unflattenDotFileName = "unflatten.dot"
-		file, err := os.OpenFile(tempDotFileName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+		file, err := os.OpenFile(tempDotFileName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 		if err != nil {
 			return errors.WithStack(err)
 		}
