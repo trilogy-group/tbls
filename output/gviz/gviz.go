@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -35,11 +36,74 @@ func New(c *config.Config) *Gviz {
 
 // OutputSchema output dot format for full relation.
 func (g *Gviz) OutputSchema(wr io.Writer, s *schema.Schema) error {
-	buf := &bytes.Buffer{}
-	if err := g.dot.OutputSchema(buf, s); err != nil {
-		return errors.WithStack(err)
+	unflattenTool, err := exec.LookPath("unflatten")
+	var dot []byte
+	if err != nil {
+		buf := &bytes.Buffer{}
+		if err := g.dot.OutputSchema(buf, s); err != nil {
+			return errors.WithStack(err)
+		}
+		dot = buf.Bytes()
+	} else {
+		file, err := os.OpenFile("temp.dot", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		defer func() {
+			err := file.Close()
+			if err != nil {
+				os.Exit(1)
+			}
+		}()
+		if err := g.dot.OutputSchema(file, s); err != nil {
+			return errors.WithStack(err)
+		}
+
+		cmdUnflattenAttr := &exec.Cmd{
+			Path:   unflattenTool,
+			Args:   []string{unflattenTool, "-l", "50", "-c", "50", "-o", "unflatten.dot", "temp.dot"},
+			Stdout: os.Stdout,
+			Stderr: os.Stderr,
+		}
+
+		if err := cmdUnflattenAttr.Run(); err != nil {
+			return errors.WithStack(err)
+		}
+
+		updatedFile, err := os.Open("unflatten.dot")
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		defer func() {
+			err := updatedFile.Close()
+			if err != nil {
+				os.Exit(1)
+			}
+		}()
+
+		fileinfo, err := updatedFile.Stat()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		filesize := fileinfo.Size()
+		dot = make([]byte, filesize)
+
+		_, err = updatedFile.Read(dot)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		err = os.Remove("temp.dot")
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		err = os.Remove("unflatten.dot")
+		if err != nil {
+			return errors.WithStack(err)
+		}
 	}
-	return g.render(wr, buf.Bytes())
+
+	return g.render(wr, dot)
 }
 
 // OutputTable output dot format for table.
