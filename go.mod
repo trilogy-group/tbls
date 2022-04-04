@@ -102,4 +102,4 @@ require (
 	google.golang.org/protobuf v1.27.1 // indirect
 )
 
-replace github.com/goccy/go-graphviz v0.0.9 => github.com/trilogy-group/go-graphviz v0.0.10
+replace github.com/goccy/go-graphviz v0.0.9 => github.com/trilogy-group/go-graphviz v0.0.11
