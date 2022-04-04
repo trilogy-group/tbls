@@ -45,6 +45,7 @@ func (m *Mongodb) Analyze(s *schema.Schema) error {
 	}
 	for _, coll := range colls {
 		colVal := dbValue.Collection(coll.Name)
+
 		indexes, err := m.listIndexes(colVal)
 		if err != nil {
 			return err
@@ -60,12 +61,30 @@ func (m *Mongodb) Analyze(s *schema.Schema) error {
 		sort.Slice(columns, func(i, j int) bool {
 			return columns[i].Name < columns[j].Name
 		})
+
+		constraints := []*schema.Constraint{}
+		validator := coll.Options.Lookup("validator")
+		if validatorDocument, ok := validator.DocumentOK(); ok {
+			allValidators, err := validatorDocument.Elements()
+			if err != nil {
+				return err
+			}
+			for _, currentValidator := range allValidators {
+				constraint := &schema.Constraint{
+					Name: currentValidator.Key(),
+					Def:  fmt.Sprint(currentValidator.Value()),
+				}
+				constraints = append(constraints, constraint)
+			}
+
+		}
 		table := &schema.Table{
-			Name:    fmt.Sprintf("%s.%s", m.dbName, coll.Name),
-			Type:    coll.Type,
-			Columns: columns,
-			Indexes: indexes,
-			Comment: fmt.Sprintf("Count of documents is %d", estimated),
+			Name:        fmt.Sprintf("%s.%s", m.dbName, coll.Name),
+			Type:        coll.Type,
+			Columns:     columns,
+			Indexes:     indexes,
+			Constraints: constraints,
+			Comment:     fmt.Sprintf("Count of documents is %d", estimated),
 		}
 		tables = append(tables, table)
 	}

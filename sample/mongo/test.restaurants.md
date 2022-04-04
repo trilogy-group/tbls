@@ -16,6 +16,12 @@ Count of documents is 149
 | name | string |  | false | 149 | 100.0 |  |  |  |
 | restaurant_id | string |  | false | 149 | 100.0 |  |  |  |
 
+## Constraints
+
+| Name | Type | Definition |
+| ---- | ---- | ---------- |
+| $jsonSchema |  | {"bsonType": "object","additionalProperties": true,"required": ["name"],"properties": {"name": {"bsonType": "string","description": "must be a string and is required"}}} |
+
 ## Indexes
 
 | Name | Definition | Comment |
