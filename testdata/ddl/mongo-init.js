@@ -1,4 +1,20 @@
-db.createCollection('restaurants');
+db.createCollection('restaurants', {
+  "validator": {
+    "$jsonSchema": {
+      "bsonType": "object",
+      "additionalProperties": true,
+      "required": ["name"],
+      "properties": {
+        "name": {
+           "bsonType": "string",
+           "description": "must be a string and is required"
+        }
+      }
+    }
+  },
+  "validationLevel": "strict",
+  "validationAction": "error"
+});
 
 db.restaurants.insertMany([{
   "address": {
