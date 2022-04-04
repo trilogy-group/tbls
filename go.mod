@@ -25,9 +25,12 @@ require (
 	github.com/minio/pkg v1.1.9
 	github.com/pkg/errors v0.9.1
 	github.com/pmezard/go-difflib v1.0.0
+	github.com/sijms/go-ora v1.2.1
 	github.com/snowflakedb/gosnowflake v1.6.5
 	github.com/spf13/cobra v1.3.0
 	github.com/xo/dburl v0.9.0
+	gitlab.com/golang-commonmark/mdurl v0.0.0-20191124015652-932350d1cb84
+	go.mongodb.org/mongo-driver v1.8.4
 	golang.org/x/image v0.0.0-20211028202545-6944b10bf410
 	google.golang.org/api v0.63.0
 )
@@ -79,15 +82,12 @@ require (
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/sahilm/fuzzy v0.1.0 // indirect
-	github.com/sijms/go-ora v1.2.1 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/scram v1.0.2 // indirect
 	github.com/xdg-go/stringprep v1.0.2 // indirect
 	github.com/youmark/pkcs8 v0.0.0-20181117223130-1be2e3e5546d // indirect
-	go.mongodb.org/mongo-driver v1.8.4 // indirect
-	gitlab.com/golang-commonmark/mdurl v0.0.0-20191124015652-932350d1cb84 // indirect
 	go.opencensus.io v0.23.0 // indirect
 	golang.org/x/crypto v0.0.0-20211209193657-4570a0811e8b // indirect
 	golang.org/x/net v0.0.0-20211209124913-491a49abca63 // indirect
@@ -101,3 +101,5 @@ require (
 	google.golang.org/grpc v1.43.0 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 )
+
+replace github.com/goccy/go-graphviz v0.0.9 => github.com/trilogy-group/go-graphviz v0.0.10
