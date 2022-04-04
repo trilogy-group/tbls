@@ -63,7 +63,7 @@ func (g *Gviz) render(wr io.Writer, b []byte) (e error) {
 		gviz.SetFontFace(faceFunc)
 	}
 	graph, err := graphviz.ParseBytes(b)
-	graph = graphviz.UnflattenGraph(graph, 0, 5, false)
+	graph = graphviz.UnflattenGraph(graph, 5, 5, false)
 	if err != nil {
 		return errors.WithStack(err)
 	}
