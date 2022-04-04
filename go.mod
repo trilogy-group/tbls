@@ -25,6 +25,7 @@ require (
 	github.com/minio/pkg v1.1.9
 	github.com/pkg/errors v0.9.1
 	github.com/pmezard/go-difflib v1.0.0
+	github.com/sijms/go-ora v1.2.1
 	github.com/snowflakedb/gosnowflake v1.6.5
 	github.com/spf13/cobra v1.3.0
 	github.com/xo/dburl v0.9.0
@@ -81,7 +82,6 @@ require (
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/sahilm/fuzzy v0.1.0 // indirect
-	github.com/sijms/go-ora v1.2.1 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
@@ -101,3 +101,5 @@ require (
 	google.golang.org/grpc v1.43.0 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 )
+
+replace github.com/goccy/go-graphviz v0.0.9 => github.com/trilogy-group/go-graphviz v0.0.10

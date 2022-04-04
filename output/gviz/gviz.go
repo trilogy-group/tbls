@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -36,76 +35,12 @@ func New(c *config.Config) *Gviz {
 
 // OutputSchema output dot format for full relation.
 func (g *Gviz) OutputSchema(wr io.Writer, s *schema.Schema) error {
-	unflattenTool, err := exec.LookPath("unflatten")
-	var dot []byte
-	if err != nil {
-		buf := &bytes.Buffer{}
-		if err := g.dot.OutputSchema(buf, s); err != nil {
-			return errors.WithStack(err)
-		}
-		dot = buf.Bytes()
-	} else {
-		const tempDotFileName = "temp.dot"
-		const unflattenDotFileName = "unflatten.dot"
-		file, err := os.OpenFile(tempDotFileName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
-		if err != nil {
-			return errors.WithStack(err)
-		}
-		defer func() {
-			err := file.Close()
-			if err != nil {
-				os.Exit(1)
-			}
-		}()
-		if err := g.dot.OutputSchema(file, s); err != nil {
-			return errors.WithStack(err)
-		}
-
-		cmdUnflattenAttr := &exec.Cmd{
-			Path:   unflattenTool,
-			Args:   []string{unflattenTool, "-l", "50", "-c", "50", "-o", unflattenDotFileName, tempDotFileName},
-			Stdout: os.Stdout,
-			Stderr: os.Stderr,
-		}
-
-		if err := cmdUnflattenAttr.Run(); err != nil {
-			return errors.WithStack(err)
-		}
-
-		updatedFile, err := os.Open(unflattenDotFileName)
-		if err != nil {
-			return errors.WithStack(err)
-		}
-		defer func() {
-			err := updatedFile.Close()
-			if err != nil {
-				os.Exit(1)
-			}
-		}()
-
-		fileinfo, err := updatedFile.Stat()
-		if err != nil {
-			return errors.WithStack(err)
-		}
-
-		filesize := fileinfo.Size()
-		dot = make([]byte, filesize)
-
-		_, err = updatedFile.Read(dot)
-		if err != nil {
-			return errors.WithStack(err)
-		}
-		err = os.Remove(tempDotFileName)
-		if err != nil {
-			return errors.WithStack(err)
-		}
-		err = os.Remove(unflattenDotFileName)
-		if err != nil {
-			return errors.WithStack(err)
-		}
+	buf := &bytes.Buffer{}
+	if err := g.dot.OutputSchema(buf, s); err != nil {
+		return errors.WithStack(err)
 	}
 
-	return g.render(wr, dot)
+	return g.render(wr, buf.Bytes())
 }
 
 // OutputTable output dot format for table.
@@ -127,7 +62,7 @@ func (g *Gviz) render(wr io.Writer, b []byte) (e error) {
 		}
 		gviz.SetFontFace(faceFunc)
 	}
-	graph, err := graphviz.ParseBytes(b)
+	graph, err := graphviz.UnflattenBytes(b, 0, 5, false)
 	if err != nil {
 		return errors.WithStack(err)
 	}
