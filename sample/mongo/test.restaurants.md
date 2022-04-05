@@ -7,7 +7,7 @@ Count of documents is 149
 ## Attributes
 
 | Name | Type | Default | Nullable | Occurrences | Percents |
-| ---- | ---- | ------- | -------- | ---------------- | ---------------- |
+| ---- | ---- | ------- | -------- | ----------- | -------- |
 | _id | objectId |  | false | 149 | 100.0 |
 | address | document |  | false | 149 | 100.0 |
 | borough | string |  | false | 149 | 100.0 |
@@ -15,12 +15,6 @@ Count of documents is 149
 | grades | array |  | false | 149 | 100.0 |
 | name | string |  | false | 149 | 100.0 |
 | restaurant_id | string |  | false | 149 | 100.0 |
-
-## Constraints
-
-| Name | Type | Definition |
-| ---- | ---- | ---------- |
-| $jsonSchema |  | {"bsonType": "object","additionalProperties": true,"required": ["name"],"properties": {"name": {"bsonType": "string","description": "must be a string and is required"}}} |
 
 ## Indexes
 
