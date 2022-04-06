@@ -23,6 +23,6 @@ digraph "{{ .Table.Name }}" {
 
   // Relations
   {{- range $i, $r := .Relations }}
-  "{{ $r.Table.Name }}":{{ $c := index $r.Columns 0 }}"{{ $c.Name }}":e -> "{{ $r.ParentTable.Name }}":{{ $pc := index $r.ParentColumns 0 }}"{{ $pc.Name }}":{{ if eq $r.Table.Name $r.ParentTable.Name }}e{{ else }}w{{ end }} [{{ if $r.Virtual }}style ="dashed",{{ end }} taillabel=<<table cellpadding="5" border="0" cellborder="0"><tr><td>{{ $r.Def | html }}</td></tr></table>>];
+  "{{ $r.Table.Name }}":{{ $c := index $r.Columns 0 }}"{{ $c.Name }}"{{ if eq $r.Table.Name $r.ParentTable.Name }}:e{{ end }} -> "{{ $r.ParentTable.Name }}":{{ $pc := index $r.ParentColumns 0 }}"{{ $pc.Name }}"{{ if eq $r.Table.Name $r.ParentTable.Name }}:e{{ end }} [{{ if $r.Virtual }}style ="dashed",{{ end }} taillabel=<<table cellpadding="5" border="0" cellborder="0"><tr><td>{{ $r.Def | html }}</td></tr></table>>];
   {{- end }}
 }
