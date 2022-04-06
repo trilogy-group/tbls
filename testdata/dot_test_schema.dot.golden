@@ -17,5 +17,5 @@ digraph "testschema" {
               </table>>];
 
   // Relations
-  "a":"a" -> "b":"b" [];
+  "a":"a":e -> "b":"b":w [];
 }
