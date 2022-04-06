@@ -614,6 +614,18 @@ er:
   # ER diagram (png/jpg) font (font name, font file, font path or keyword)
   # Default is "" ( system default )
   font: M+
+  # Unflatten parameter
+  # https://gitlab.com/graphviz/graphviz/-/blob/main/cmd/tools/unflatten.c
+  unflatten:
+    # Stagger length of leaf edges between [1,<provided value>]
+    # Default is 0
+    maxminlen: 5
+    # Put disconnected nodes in chains of provided length
+    # Default is 0
+    chainlimit: 5
+    # Adjust immediate fanout chains
+    # Default is false
+    dofans: true
 ```
 
 It is also possible to personalize the output by providing your own templates.
