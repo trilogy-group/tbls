@@ -67,11 +67,18 @@ type Format struct {
 
 // ER is er setting
 type ER struct {
-	Skip     bool   `yaml:"skip,omitempty"`
-	Format   string `yaml:"format,omitempty"`
-	Comment  bool   `yaml:"comment,omitempty"`
-	Distance *int   `yaml:"distance,omitempty"`
-	Font     string `yaml:"font,omitempty"`
+	Skip      bool      `yaml:"skip,omitempty"`
+	Format    string    `yaml:"format,omitempty"`
+	Comment   bool      `yaml:"comment,omitempty"`
+	Distance  *int      `yaml:"distance,omitempty"`
+	Font      string    `yaml:"font,omitempty"`
+	Unflatten Unflatten `yaml:"unflatten,omitempty"`
+}
+
+type Unflatten struct {
+	DoFans     bool `yaml:"dofans,omitempty"`
+	MaxMinlen  int  `yaml:"maxminlen,omitempty"`
+	ChainLimit int  `yaml:"chainlimit,omitempty"`
 }
 
 // AdditionalRelation is the struct for table relation from yaml
