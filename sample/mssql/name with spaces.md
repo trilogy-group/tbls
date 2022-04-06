@@ -20,9 +20,9 @@ CREATE VIEW "name with spaces" AS (
 
 ## Columns
 
-| Name | Type | Default | Nullable | Children | Parents | Comment |
-| ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| title | varchar(255) |  | false |  |  |  |
+| Name | Type | Default | Nullable |
+| ---- | ---- | ------- | -------- |
+| title | varchar(255) |  | false |
 
 ## Relations
 
