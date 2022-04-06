@@ -14,6 +14,7 @@ DROP TABLE IF EXISTS users;
 DROP SCHEMA IF EXISTS administrator;
 DROP FUNCTION IF EXISTS get_user;
 DROP PROC IF EXISTS What_DB_is_that;
+DROP VIEW IF EXISTS "name with spaces";
 
 CREATE TABLE users (
   id int NOT NULL IDENTITY(1,1) PRIMARY KEY,
@@ -181,3 +182,7 @@ RETURN
 CREATE PROC What_DB_is_that @ID INT
 AS
 SELECT DB_NAME(@ID) AS ThatDB;
+CREATE VIEW "name with spaces" AS (
+  SELECT TOP 1 p.title
+  FROM posts AS p
+);
